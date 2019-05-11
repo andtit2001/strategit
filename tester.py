@@ -2,8 +2,8 @@
 # pylint: disable=missing-docstring
 import unittest
 
-import units
-from units import abc
+from code import units
+from code.units import abc
 
 
 class TestMethods(unittest.TestCase):
