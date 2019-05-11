@@ -9,6 +9,10 @@ import os
 import random
 
 
+from game import units
+# from game.units import abc as units_abs
+
+
 PlayerInfo = namedtuple(
     "PlayerInfo",
     [
@@ -22,6 +26,25 @@ PlayerInfo = namedtuple(
 )
 
 
+# pylint: disable=missing-docstring
+class GameEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, units.Headquarters):
+            return {
+                "__unittype__": "hq",
+                "color": obj.color,
+                "unit_dict": obj._unit_dict
+            }
+        return json.JSONEncoder.default(self, obj)
+
+
+def game_object_hook(dct):
+    if "__unittype__" in dct:
+        if dct["__unittype__"] == "hq":
+            return units.Headquarters(dct["color"], dct["unit_dict"])
+    return dct
+
+
 class GameState:
     """
     Class that represents game state
@@ -32,26 +55,31 @@ class GameState:
     list_of_player_infos = []
 
     def __init__(self, player_count):
+        color = random.randrange(0, 2**24)
         self.list_of_player_infos = [PlayerInfo(
-            random.randrange(0, 2**24), False, 1000,
-            [], [], []
+            color, False, 1000,
+            [units.Headquarters(color, {})], [], []
         )]
         for _ in range(player_count - 1):
+            color = random.randrange(0, 2**24)
             self.list_of_player_infos.append(PlayerInfo(
-                random.randrange(0, 2**24), True, 1000,
-                [], [], []
+                color, True, 1000,
+                [units.Headquarters(color, {})], [], []
             ))
 
     def load(self, filename):
         """Replace current state with one loaded from file"""
         with open(filename, encoding="utf-8") as file:
-            self.list_of_player_infos = json.load(file)
+            self.list_of_player_infos = json.load(file,
+                                                  object_hook=game_object_hook)
         self.filename = filename
 
-    def save(self, filename):
+    def save(self, filename=""):
         """Save state to the file"""
+        if not filename:
+            filename = self.filename
         with open(filename, "w", encoding="utf-8") as file:
-            json.dump(self.list_of_player_infos, file)
+            json.dump(self.list_of_player_infos, file, cls=GameEncoder)
 
 
 class MenuShell(cmd.Cmd):
@@ -129,6 +157,14 @@ or load an existing one."
         except OSError as err:
             self.stdout.write("OSError: {}\n".format(err))
             return
+
+    def do_rm(self, arg):
+        if not arg:
+            self.stdout.write("Please specify name of save file.")
+            return
+
+        arg = "saves/{}.json".format(shlex.split(arg)[0])
+        os.remove(arg)
 
     # pylint: disable=unused-argument
     def do_start(self, arg):
