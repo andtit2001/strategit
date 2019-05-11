@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+"""A simple strategy game."""
+
 import units
 import units.abc
 

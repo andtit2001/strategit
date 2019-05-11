@@ -1,9 +1,10 @@
-__name__ = "units"
-
+# -*- coding: utf-8 -*-
+"""Real classes for game"""
 from . import abc
 
 
 class Headquarters(abc.UnitFactory):
+    """Factory which can create units from given list with given color"""
     _color = None
     __unit_dict = None
     __colored_unit = None
@@ -29,9 +30,11 @@ class Headquarters(abc.UnitFactory):
 
     @property
     def color(self):
+        # pylint: disable=missing-docstring
         return self._color
 
     def create_unit(self, name, pos):
+        # pylint: disable=missing-docstring
         new_unit = None
         if name in self.__unit_dict:
             new_unit = self.__unit_dict[name](name, pos)
@@ -41,7 +44,10 @@ class Headquarters(abc.UnitFactory):
 
 
 class Infantry(abc.MovableBattleUnit):
+    # pylint: disable=missing-docstring
     pass
 
+
 class Vehicle(abc.MovableBattleUnit):
+    # pylint: disable=missing-docstring
     pass

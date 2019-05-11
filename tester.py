@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+# pylint: disable=missing-docstring
 import unittest
 
 import units
@@ -6,9 +8,9 @@ from units import abc
 
 class TestMethods(unittest.TestCase):
     def test_point_addition(self):
-        point1 = abc.Point(1, 2)
-        point2 = abc.Point(3, 4)
-        point3 = abc.Point(4, 6)
+        point1 = abc.Vector(1, 2)
+        point2 = abc.Vector(3, 4)
+        point3 = abc.Vector(4, 6)
         self.assertEqual(point1 + point2, point3)
 
     def test_change_position(self):
@@ -22,6 +24,7 @@ class TestMethods(unittest.TestCase):
         self.assertEqual(troop.position, (4, 5,))
 
     def test_coloring(self):
+        # pylint: disable=invalid-name
         unit_dict = {"infantry": units.Infantry}
         RED = 0xFF0000
         red_HQ = units.Headquarters(RED, unit_dict)
@@ -30,4 +33,5 @@ class TestMethods(unittest.TestCase):
         self.assertEqual(red_unit.color, RED)
 
 
-unittest.main()
+if __name__ == "__main__":
+    unittest.main()
