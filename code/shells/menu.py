@@ -48,8 +48,7 @@ Create new save file in directory \"saves\""""
         if not saves_path.exists():
             try:
                 saves_path.mkdir()
-            # pylint: disable=broad-except
-            except BaseException as err:
+            except OSError as err:
                 self.stdout.write("System error: {}\n".format(err))
                 return
         if not saves_path.is_dir():
@@ -63,7 +62,7 @@ Create new save file in directory \"saves\""""
         try:
             self.game_state.save(arg)
         except OSError as err:
-            self.stdout.write("OSError: {}\n".format(err))
+            self.stdout.write("System error: {}\n".format(err))
             self.game_state = None
             return
 
@@ -95,7 +94,7 @@ Save game to the specified file
         try:
             self.game_state.save(arg)
         except OSError as err:
-            self.stdout.write("OSError: {}\n".format(err))
+            self.stdout.write("System error: {}\n".format(err))
             return
 
     def do_rm(self, arg):

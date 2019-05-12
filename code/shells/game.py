@@ -11,33 +11,34 @@ class GameShell(cmd.Cmd):
     prompt = "Game> "
 
     game_state = None
+    current_player = 0
     action_queue = deque()
     selected_unit = None
 
     def __init__(self, game_state):
         super().__init__()
         self.game_state = game_state
-        self.prompt = "Game[{}]> ".format(game_state.current_player)
+        self.current_player = game_state.current_player
+        self.prompt = "Game[{}]> ".format(self.current_player)
 
     @staticmethod
     def _get_ints(string, count):
         if not string:
             return None
         nums = string.split()[:count]
-        if len(nums) < count:
-            return None
         try:
             nums = list(map(int, nums))
-            return nums
         except ValueError:
             return None
+        nums.extend([None] * (count - len(nums)))
+        return nums
 
     @staticmethod
     def _validate_ints(ints, upper_bounds, lower_bounds=None):
         if not lower_bounds:
             lower_bounds = [0] * len(ints)
         for i, value in enumerate(ints):
-            if not lower_bounds[i] <= value <= upper_bounds[i]:
+            if value not in range(lower_bounds[i], upper_bounds[i]):
                 return i
         return len(ints)
 
@@ -65,7 +66,7 @@ Return to the menu (use "abort" to exit game forcefully)"""
         """Usage: show <x1> <y1> <x2> <y2>
 Show part of field as textual axis-aligned rectangle"""
         arg = self._get_ints(arg, 4)
-        if not arg:
+        if not arg or not arg[-1]:
             self.stdout.write("""\
 Please specify four integers as rectangle coordinates.\n""")
             return
@@ -74,18 +75,19 @@ Please specify four integers as rectangle coordinates.\n""")
         if arg[1] > arg[3]:
             arg[1], arg[3] = arg[3], arg[1]
         upper_bounds = (
-            self.game_state.width - 1,
-            self.game_state.height - 1,
-            self.game_state.width - 1,
-            self.game_state.height - 1,
+            self.game_state.width,
+            self.game_state.height,
+            self.game_state.width,
+            self.game_state.height
         )
         index = self._validate_ints(arg, upper_bounds)
         if index < 2:
             self.stdout.write(
                 "All coordinates should lie in range [0, {}).\n".format(
-                    upper_bounds[index] + 1)
+                    upper_bounds[index])
             )
             return
+
         for line in self.game_state.game_field[arg[1]:arg[3] + 1]:
             self.stdout.write(' '.join(
                 ['a' if unit else '_'
@@ -95,30 +97,68 @@ Please specify four integers as rectangle coordinates.\n""")
         """Usage: inspect <x> <y>
 Show info about unit(s) in specified cell."""
         arg = self._get_ints(arg, 2)
-        if not arg:
+        if not arg or not arg[-1]:
             self.stdout.write(
                 "Please specify two integers as cell coordinates.\n")
             return
-        bounds = (self.game_state.width - 1, self.game_state.height - 1,)
+        bounds = (self.game_state.width, self.game_state.height,)
         index = self._validate_ints(arg, bounds)
         if index < 2:
             self.stdout.write(
                 "{} coordinate should lie in range [0, {}).\n".format(
-                    ("Horizontal", "Vertical")[index], bounds[index] + 1)
+                    ("Horizontal", "Vertical")[index], bounds[index])
             )
             return
+
         if self.game_state.game_field[arg[1]][arg[0]]:
             for unit_id in self.game_state.game_field[arg[1]][arg[0]]:
                 self.stdout.write(
                     str(self.game_state.list_of_player_infos
-                        [self.game_state.current_player].unit_list[unit_id])
+                        [self.current_player].unit_list[unit_id])
                     + '\n')
         else:
             self.stdout.write("Nothing here.\n")
 
     def do_select(self, arg):
         """Usage: select <x> <y> [index]
-Select unit in specified cell (use "inspect" to get index of the unit)"""
+Select unit in specified cell (use "inspect" to get index of the unit)
+If index is omitted, it is equal to 0."""
+        arg = self._get_ints(arg, 3)
+        if not arg or not arg[1]:
+            self.stdout.write("""\
+Please specify two or three integers as cell coordinates and index.\n""")
+            return
+        bounds = (self.game_state.width, self.game_state.height,)
+        index = self._validate_ints(arg[:2], bounds)
+        if index < 2:
+            self.stdout.write(
+                "{} coordinate should lie in range [0, {}).\n".format(
+                    ("Horizontal", "Vertical")[index], bounds[index])
+            )
+            return
+
+        if not self.game_state.game_field[arg[1]][arg[0]]:
+            self.stdout.write("Nothing to select.\n")
+            return
+        arg[2] = arg[2] if arg[2] else 0
+        if arg[2] not in range(len(
+                self.game_state.game_field[arg[1]][arg[0]])):
+            self.stdout.write(
+                "Index should lie in range [0, {}).\n".format(
+                    len(self.game_state.game_field[arg[1]][arg[0]]))
+            )
+            return
+
+        self.selected_unit = self.game_state.game_field[arg[1]][arg[0]][arg[2]]
+        self.prompt = "Game[{}].Unit[{}]> ".format(
+            self.current_player, self.selected_unit)
+
+    def do_deselect(self, arg):
+        """Usage: deselect
+Deselect currently selected unit"""
+        # pylint: disable=unused-argument
+        self.selected_unit = None
+        self.prompt = "Game[{}]> ".format(self.current_player)
 
     def do_status(self, arg):
         """Usage: status
@@ -129,9 +169,12 @@ List all planned actions"""
 
     def do_undo(self, arg):
         """Usage: undo
-Select unit in specified cell (use "inspect" to get index of the unit)"""
+Cancel last planned action"""
         # pylint: disable=unused-argument
-        self.action_queue.pop()
+        try:
+            self.action_queue.pop()
+        except IndexError:
+            self.stdout.write("Nothing to cancel.\n")
 
     def do_commit(self, arg):
         """Apply all planned actions"""
