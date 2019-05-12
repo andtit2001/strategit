@@ -3,9 +3,10 @@
 from collections import namedtuple
 import json
 import random
+import sys
 
 from . import units
-# from .units import abc as units_abc
+
 
 FIELD_WIDTH = 20
 FIELD_HEIGHT = 20
@@ -17,8 +18,6 @@ PlayerInfo = namedtuple(
         "color",
         "AI",
         "money",
-        "unit_list",
-        "squad_list",
     ]
 )
 
@@ -52,7 +51,29 @@ class GameEncoder(json.JSONEncoder):
             return {
                 "__unittype__": "hq",
                 "color": obj.color,
-                "unit_dict": obj._unit_dict
+                "name": obj.name,
+                "pos": obj.position,
+                "allowed_units": obj._allowed_units_names
+            }
+        if isinstance(obj, units.Infantry):
+            return {
+                "__unittype__": "infantry",
+                "color": obj.color,
+                "name": obj.name,
+                "pos": obj.position,
+                "health": obj.health,
+                "damage": obj.damage,
+                "max_health": obj.max_health
+            }
+        if isinstance(obj, units.Vehicle):
+            return {
+                "__unittype__": "vehicle",
+                "color": obj.color,
+                "name": obj.name,
+                "pos": obj.position,
+                "health": obj.health,
+                "damage": obj.damage,
+                "max_health": obj.max_health
             }
         return json.JSONEncoder.default(self, obj)
 
@@ -61,10 +82,30 @@ def game_object_hook(dct):
     """Object hook for `json.load()`"""
     if "__type__" in dct:
         if dct["__type__"] == "player_info":
-            return PlayerInfo._make(dct["__data__"])
+            return Wrapper(PlayerInfo(**dct["__data__"]))
     if "__unittype__" in dct:
         if dct["__unittype__"] == "hq":
-            return units.Headquarters(dct["color"], dct["unit_dict"])
+            type_dict = {}
+            for name in dct["allowed_units"]:
+                type_dict[name.lower()] = getattr(
+                    getattr(sys.modules[__name__], "units"), name)
+            return units.Headquarters(
+                dct["name"], dct["pos"],
+                dct["color"], type_dict)
+        if dct["__unittype__"] == "infantry":
+            obj = units.Infantry(dct["name"], dct["pos"])
+            obj.color = dct["color"]
+            obj.health = dct["health"]
+            obj.damage = dct["damage"]
+            obj.max_health = dct["max_health"]
+            return obj
+        if dct["__unittype__"] == "vehicle":
+            obj = units.Vehicle(dct["name"], dct["pos"])
+            obj.color = dct["color"]
+            obj.health = dct["health"]
+            obj.damage = dct["damage"]
+            obj.max_health = dct["max_health"]
+            return obj
     return dct
 
 
@@ -74,10 +115,12 @@ class GameState:
     (number of players and units, their stats and so on)
     """
 
-    filename = ""
     current_player = 0
-    list_of_player_infos = []
-    game_field = []
+    list_of_player_infos = None
+    game_field = None
+    unit_count = 0
+    unit_dict = None
+    squad_dict = None
     width = 0
     height = 0
 
@@ -87,38 +130,56 @@ class GameState:
             player_count = 2
         if player_count > 2:
             player_count = 4
-        for _ in range(player_count):
+
+        hq_pos = [
+            (0, 0),
+            (width - 1, height - 1),
+            (height - 1, 0),
+            (0, width - 1)
+        ]
+        if player_count == 4:
+            hq_pos[1], hq_pos[2] = hq_pos[2], hq_pos[1]
+        self.list_of_player_infos = []
+        self.game_field = [[[] for _ in range(width)] for _ in range(height)]
+        self.unit_dict = {}
+        self.squad_dict = {}
+        for i in range(player_count):
             color = random.randrange(0, 2**24)
             self.list_of_player_infos.append(Wrapper(PlayerInfo(
-                color, True, 1000,
-                [units.Headquarters(color, {})], [],
+                color, False, 1000
             )))
-        self.game_field = [[None] * width for _ in range(height)]
-        self.game_field[0][0] = [0]
-        self.game_field[height - 1][width - 1] = [0]
-        if player_count == 4:
-            self.game_field[height - 1][0] = [0]
-            self.game_field[0][width - 1] = [0]
+            self.unit_dict[i] = units.Headquarters(
+                "HQ", hq_pos[i], color,
+                {"infantry": units.Infantry, "vehicle": units.Vehicle})
+            self.game_field[hq_pos[i][1]][hq_pos[i][0]] = [i]
         self.width = width
         self.height = height
+        self.unit_count = player_count
 
     def load(self, filename):
         """Replace current state with one loaded from file"""
         with open(filename, encoding="utf-8") as file:
-            self.game_field, self.list_of_player_infos = json.load(
-                file,
-                object_hook=game_object_hook)
-        self.filename = filename
+            self.unit_count, self.game_field, self.list_of_player_infos,\
+                self.unit_dict, self.squad_dict =\
+                json.load(
+                    file,
+                    object_hook=game_object_hook)
+        new_dict = {}
+        for key, value in self.unit_dict.items():
+            new_dict[int(key)] = value
+        self.unit_dict = new_dict
+        new_dict = {}
+        for key, value in self.squad_dict.items():
+            new_dict[int(key)] = value
+        self.squad_dict = new_dict
+
         self.width = len(self.game_field[0])
         self.height = len(self.game_field)
 
-    def save(self, filename=None):
+    def save(self, filename):
         """Save state to the file"""
-        if not filename:
-            filename = self.filename
         with open(filename, "w", encoding="utf-8") as file:
-            json.dump([self.game_field, self.list_of_player_infos],
-                      file, cls=GameEncoder)
-
-
-random.seed()
+            json.dump(
+                [self.unit_count, self.game_field, self.list_of_player_infos,
+                 self.unit_dict, self.squad_dict],
+                file, cls=GameEncoder)

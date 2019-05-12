@@ -9,11 +9,15 @@ class Vector(namedtuple("Vector", ["x", "y"])):
     def __add__(self, other):
         return Vector(self.x + other.x, self.y + other.y)
 
+    def __sub__(self, other):
+        return Vector(self.x - other.x, self.y - other.y)
+
 
 class Unit:
     """Abstract unit which can't do anything"""
     _name = None
     _position = None
+    _char = 'U'
 
     def __init__(self, name, pos):
         self._name = name
@@ -28,6 +32,11 @@ class Unit:
     def position(self):
         # pylint: disable=missing-docstring
         return self._position
+
+    @property
+    def char(self):
+        """Used for `show` command"""
+        return self._char
 
 
 class MovableUnit(Unit):

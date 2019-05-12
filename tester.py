@@ -27,8 +27,8 @@ class TestMethods(unittest.TestCase):
         # pylint: disable=invalid-name
         unit_dict = {"infantry": units.Infantry}
         RED = 0xFF0000
-        red_HQ = units.Headquarters(RED, unit_dict)
-        red_unit = red_HQ.create_unit("infantry", (0, 0))
+        red_HQ = units.Headquarters("HQ", (0, 0,), RED, unit_dict)
+        red_unit = red_HQ.create_unit("infantry", (1, 1))
         self.assertEqual(red_unit.__class__.__name__, "ColoredInfantry")
         self.assertEqual(red_unit.color, RED)
 

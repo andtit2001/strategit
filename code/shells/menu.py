@@ -17,6 +17,7 @@ or load an existing one."
     prompt = "Menu> "
 
     game_state = None
+    last_savefile = ""
 
     @staticmethod
     def do_exit(arg):
@@ -42,6 +43,9 @@ List all saved games"""
     def do_touch(self, arg):
         """Usage: touch <filename>
 Create new save file in directory \"saves\""""
+        if not arg:
+            self.stdout.write("Please specify name of save file.\n")
+            return
         arg = "saves/{}.json".format(shlex.split(arg)[0])
 
         saves_path = Path("saves")
@@ -65,6 +69,7 @@ Create new save file in directory \"saves\""""
             self.stdout.write("System error: {}\n".format(err))
             self.game_state = None
             return
+        self.last_savefile = arg
 
     def do_load(self, arg):
         """Usage: load <filename>
@@ -81,6 +86,7 @@ Load existing save file"""
         if not self.game_state:
             self.game_state = GameState(1, 1, 1)
         self.game_state.load(arg)
+        self.last_savefile = arg
 
     def do_save(self, arg):
         """Usage: save [filename]
@@ -88,7 +94,7 @@ Save game to the specified file
 (defaults to the file from which it was loaded)"""
         arg = shlex.split(arg)
         if not arg:
-            arg = self.game_state.filename
+            arg = self.last_savefile
         else:
             arg = "saves/{}.json".format(arg[0])
         try:
