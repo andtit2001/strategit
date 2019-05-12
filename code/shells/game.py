@@ -57,7 +57,7 @@ Return to the menu"""
 
     def do_exit(self, arg):
         """Usage: exit
-Return to the menu (use \"abort\" to exit game forcefully)"""
+Return to the menu (use "abort" to exit game forcefully)"""
         # pylint: disable=unused-argument
         return self.do_menu(arg)
 

@@ -7,7 +7,7 @@ from pathlib import Path
 import shlex
 
 from .game import GameShell
-from .. import FIELD_WIDTH, FIELD_HEIGHT, GameState
+from ..state import FIELD_WIDTH, FIELD_HEIGHT, GameState
 
 
 class MenuShell(cmd.Cmd):
@@ -114,7 +114,8 @@ Remove specified save file"""
             self.stdout.write("System error: {}\n".format(err))
 
     def do_start(self, arg):
-        """Start game"""
+        """Usage: start
+Start game"""
         # pylint: disable=unused-argument
         if self.game_state is None:
             self.stdout.write("Please create or load save file to start.\n")
