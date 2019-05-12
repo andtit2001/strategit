@@ -1,0 +1,11 @@
+dist: xenial
+language: python
+python:
+  - "3.6"
+  - "3.7"
+script:
+  - python -m unittest tester.py
+notification:
+  email:
+    recipients:
+    - andtit2001@gmail.com
